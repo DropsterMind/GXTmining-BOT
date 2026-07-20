@@ -50,46 +50,77 @@ Before running the bot, you need to set up your environment variables.
 2. Open the file and add your credentials using the following format:
 
 ```env
-# Your GXT Exchange Authorization Bearer Token
+# Your GXT Exchange Tokens
 BEARER_TOKEN="eyJhbGciOiJFUzI1NiIs..." 
+REFRESH_TOKEN="your_refresh_token_here"
 
 # Your 2Captcha API Key (for bypassing the slider puzzle)
 TWOCAPTCHA_API_KEY="your_2captcha_api_key_here"
 ```
 
-### How to get your `BEARER_TOKEN`:
+### How to get your `BEARER_TOKEN` and `REFRESH_TOKEN`:
 1. Open [GXT Exchange](https://gxtexchange.com/auth?ref=16A2D55A) and log in to your account.
-2. Press `F12` to open Developer Tools and navigate to the **Network** tab.
-3. Click on the **Claim** button or navigate to the mining page.
-4. Look for network requests made to `supabase.co` (e.g., `user`, `balances`, or `mining_claims`).
-5. Click on the request, go to the **Headers** section, and find the `authorization` header. 
-6. Copy the long string starting with `eyJ...` (exclude the word "Bearer").
+2. Press **F12** to open Developer Tools.
+3. Go to the **Application** tab (If you don't see it, click the >> icon next to Network/Console)
+4. On the left sidebar, expand **Local Storage**.
+5. Look for a key named `sb-eoerppzmsxhgmrcxrika-auth-token` and click on it.. 
+6. You will see JSON data similar to:
 
+```json
+{
+  "access_token": "...",
+  "refresh_token": "..."
+}
+```
+
+Copy:
+
+- `access_token` → Use as your `BEARER_TOKEN`
+- `refresh_token` → Use as your `REFRESH_TOKEN`
 ---
 
-## 🚀 Usage
+# 🚀 Usage
 
-Run the script using Python:
+Run the bot with:
 
 ```bash
 python bot.py
 or
-python3 bot.py
+pytohon3 bot.py
 ```
 
-The bot will display your balance, calculate the waiting time, and sleep until it's time to execute the next claim.
+The bot will:
+
+- Check your current GXT balance.
+- Calculate the remaining time until the next claim.
+- Sleep until the claim becomes available.
+- Automatically refresh expired sessions using the `REFRESH_TOKEN`.
+- Update your `.env` file with the latest tokens when necessary.
 
 ---
 
-## 🧩 About CAPTCHA Integration
-GXT Exchange periodically uses a custom slider puzzle (`_puzzle_id`) to verify claims. The `solve_puzzle_with_2captcha()` function in this script serves as a **blueprint**. 
+# 🧩 CAPTCHA Integration
 
-Depending on how strictly the platform enforces the CAPTCHA, you may need to manually inspect the specific API endpoints for loading and verifying the puzzle to fully automate the 2Captcha bypass.
+GXT Exchange may occasionally require users to solve a custom slider puzzle (`_puzzle_id`) before allowing a claim.
+
+This project includes a template function:
+
+```python
+solve_puzzle_with_2captcha()
+```
+
+which serves as a starting point for integrating **2Captcha**.
+
+Depending on future updates to GXT Exchange, you may need to inspect the puzzle-related API endpoints and adjust the implementation accordingly.
 
 ---
 
-## ⚠️ Disclaimer
-**For Educational Purposes Only.** 
-Automating claims using scripts or bots may violate the Terms of Service of GXT Exchange. The creator of this script is not responsible for any account bans, suspensions, or losses incurred while using this software. Use it strictly at your own risk.
+# ⚠️ Disclaimer
 
----
+> **For Educational Purposes Only**
+>
+> Automating claims using scripts or bots may violate the Terms of Service of GXT Exchange.
+>
+> The creator of this project is **not responsible** for any account bans, suspensions, financial losses, or other consequences resulting from the use of this software.
+>
+> **Use this project entirely at your own risk.**
