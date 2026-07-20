@@ -34,6 +34,8 @@ An automated Python script to seamlessly claim mining rewards on GXT Exchange. T
    Make sure to install the required Python libraries (`requests` and `python-dotenv`).
    ```bash
    pip install requests python-dotenv
+   or
+   pip3 install requests python-dotenv
    ```
 
 ---
@@ -56,7 +58,7 @@ TWOCAPTCHA_API_KEY="your_2captcha_api_key_here"
 ```
 
 ### How to get your `BEARER_TOKEN`:
-1. Open [GXT Exchange](https://gxtexchange.com/) and log in to your account.
+1. Open [GXT Exchange](https://gxtexchange.com/auth?ref=16A2D55A) and log in to your account.
 2. Press `F12` to open Developer Tools and navigate to the **Network** tab.
 3. Click on the **Claim** button or navigate to the mining page.
 4. Look for network requests made to `supabase.co` (e.g., `user`, `balances`, or `mining_claims`).
@@ -71,6 +73,8 @@ Run the script using Python:
 
 ```bash
 python bot.py
+or
+python3 bot.py
 ```
 
 The bot will display your balance, calculate the waiting time, and sleep until it's time to execute the next claim.
