@@ -3,40 +3,85 @@ import requests
 import time
 import uuid
 from datetime import datetime, timezone
-from dotenv import load_dotenv
+from dotenv import load_dotenv, set_key
 
 # Load konfigurasi dari file .env
-load_dotenv()
+ENV_FILE = ".env"
+load_dotenv(ENV_FILE)
 
 BEARER_TOKEN = os.getenv("BEARER_TOKEN")
+REFRESH_TOKEN = os.getenv("REFRESH_TOKEN")
 TWOCAPTCHA_API_KEY = os.getenv("TWOCAPTCHA_API_KEY")
-SUPABASE_API_KEY = "sb_publishable_j-w0ixQxY1i505RyOrepyQ_9KosAIBA"
 
+SUPABASE_API_KEY = "sb_publishable_j-w0ixQxY1i505RyOrepyQ_9KosAIBA"
 BASE_URL = "https://eoerppzmsxhgmrcxrika.supabase.co"
 GXT_API_URL = "https://gxtexchange.com/api"
 
-HEADERS = {
-    "accept": "*/*",
-    "accept-language": "en-US,en;q=0.8",
-    "apikey": SUPABASE_API_KEY,
-    "authorization": f"Bearer {BEARER_TOKEN}",
-    "content-type": "application/json",
-    "origin": "https://gxtexchange.com",
-    "referer": "https://gxtexchange.com/",
-    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-    "x-client-info": "supabase-js/2.108.2; runtime=web"
-}
+# Headers default
+def get_headers():
+    return {
+        "accept": "*/*",
+        "accept-language": "en-US,en;q=0.8",
+        "apikey": SUPABASE_API_KEY,
+        "authorization": f"Bearer {BEARER_TOKEN}",
+        "content-type": "application/json",
+        "origin": "https://gxtexchange.com",
+        "referer": "https://gxtexchange.com/",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "x-client-info": "supabase-js/2.108.2; runtime=web"
+    }
+
+def refresh_access_token():
+    global BEARER_TOKEN, REFRESH_TOKEN
+    print("[*] Token expired. Mencoba mendapatkan token baru dengan Refresh Token...")
+    
+    url = f"{BASE_URL}/auth/v1/token?grant_type=refresh_token"
+    payload = {"refresh_token": REFRESH_TOKEN}
+    headers = {
+        "apikey": SUPABASE_API_KEY,
+        "content-type": "application/json"
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        if response.status_code == 200:
+            data = response.json()
+            
+            # Update variabel global dengan token baru
+            BEARER_TOKEN = data.get("access_token")
+            REFRESH_TOKEN = data.get("refresh_token")
+            
+            # Simpan token baru ke file .env agar aman jika bot direstart
+            set_key(ENV_FILE, "BEARER_TOKEN", BEARER_TOKEN)
+            set_key(ENV_FILE, "REFRESH_TOKEN", REFRESH_TOKEN)
+            
+            print("[+] Berhasil me-refresh token! Melanjutkan tugas...")
+            return True
+        else:
+            print(f"[-] Gagal me-refresh token. Error: {response.text}")
+            print("[-] Solusi: Silakan ambil REFRESH_TOKEN baru dari browser dan update file .env.")
+            return False
+    except Exception as e:
+        print(f"[-] Error saat refresh token: {e}")
+        return False
 
 def get_balance():
     print("[*] Mengecek saldo...")
     url = f"{BASE_URL}/rest/v1/balances?select=asset%2Camount"
     try:
-        response = requests.get(url, headers=HEADERS)
+        response = requests.get(url, headers=get_headers())
         if response.status_code == 200:
             for item in response.json():
                 if item['asset'] == 'GXT':
                     print(f"[+] Saldo GXT saat ini: {item['amount']}")
                     return item['amount']
+        elif response.status_code == 401:
+            # Token mati, jalankan fungsi refresh
+            if refresh_access_token():
+                # Jika sukses refresh, coba cek saldo lagi (rekursif)
+                return get_balance()
+            else:
+                exit() # Hentikan bot jika refresh gagal total
         else:
             print(f"[-] Gagal mengambil saldo: {response.status_code}")
     except Exception as e:
@@ -45,12 +90,11 @@ def get_balance():
 def get_next_claim_time():
     url = f"{BASE_URL}/rest/v1/mining_claims?select=id%2Camount%2Crate_per_hour%2Chours_credited%2Cclaimed_at%2Cnext_claim_at&order=claimed_at.desc&limit=1"
     try:
-        response = requests.get(url, headers=HEADERS)
+        response = requests.get(url, headers=get_headers())
         if response.status_code == 200:
             data = response.json()
             if len(data) > 0:
                 next_claim_str = data[0]['next_claim_at']
-                # Ambil 19 karakter pertama (YYYY-MM-DDTHH:MM:SS) dan set ke UTC
                 clean_time_str = next_claim_str[:19]
                 return datetime.strptime(clean_time_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
         return None
@@ -59,41 +103,12 @@ def get_next_claim_time():
         return None
 
 def solve_puzzle_with_2captcha():
-    """
-    Fungsi ini menangani alur penyelesaian captcha dengan 2Captcha.
-    Karena bentuk validasi endpoint GXT belum diketahui spesifikasinya,
-    bagian ini memuat kerangka dasarnya.
-    """
-    print("[*] Memulai proses bypass Captcha...")
-    
-    # 1. Request ke server GXT untuk mendapatkan data puzzle baru
-    # puzzle_req = requests.get(f"{GXT_API_URL}/public/puzzle", headers=HEADERS)
-    # data_puzzle = puzzle_req.json()
-    # puzzle_id = data_puzzle.get("id")
-    # puzzle_image = data_puzzle.get("image")
-    
-    # 2. Kirim data ke 2Captcha (Contoh tipe Coordinates/Custom)
-    # print("[*] Mengirim puzzle ke 2Captcha...")
-    # captcha_submit_url = f"http://2captcha.com/in.php?key={TWOCAPTCHA_API_KEY}&method=post&json=1"
-    # Di sini kamu akan mengirim base64 gambar puzzle ke 2Captcha
-    
-    # 3. Tunggu hasil koordinat/token dari 2Captcha
-    # res_url = f"http://2captcha.com/res.php?key={TWOCAPTCHA_API_KEY}&action=get&id={captcha_task_id}&json=1"
-    
-    # 4. Verifikasi hasil tersebut ke endpoint GXT
-    # verify_req = requests.post(f"{GXT_API_URL}/public/puzzle/verify", json={"id": puzzle_id, "answer": captcha_answer})
-    
-    # KEMBALIKAN puzzle_id yang sudah divalidasi
-    # return puzzle_id
-    
-    print("[!] Modul 2Captcha disiapkan. Menunggu logika spesifik endpoint GXT puzzle.")
-    # Sementara mengembalikan statis sesuai request sebelumnya untuk testing
+    print("[!] Modul bypass Captcha disiapkan. Menggunakan ID statis sementara.")
+    # ID statis untuk bypass (Perlu diupdate sesuai alur 2Captcha nanti)
     return "53794aa7-c89c-464a-b1a7-dea5a5e716a4" 
 
 def do_claim():
     print("[*] Menyiapkan eksekusi claim...")
-    
-    # Dapatkan puzzle_id yang sudah di-bypass
     puzzle_id = solve_puzzle_with_2captcha()
     
     claim_url = f"{BASE_URL}/rest/v1/rpc/claim_mining_v1"
@@ -103,7 +118,7 @@ def do_claim():
     }
     
     try:
-        response = requests.post(claim_url, headers=HEADERS, json=payload)
+        response = requests.post(claim_url, headers=get_headers(), json=payload)
         
         if response.status_code in [200, 201]:
             data = response.json()
@@ -111,6 +126,9 @@ def do_claim():
                 print(f"[+] BERHASIL CLAIM! Mendapatkan: {data.get('reward')} GXT")
             else:
                 print(f"[-] Respons claim OK false: {data}")
+        elif response.status_code == 401:
+            if refresh_access_token():
+                do_claim() # Ulangi claim dengan token baru
         else:
             print(f"[-] Gagal claim (HTTP {response.status_code}): {response.text}")
     except Exception as e:
@@ -121,8 +139,8 @@ def main():
     print("    AUTO CLAIM GXT BOT        ")
     print("==============================\n")
     
-    if not BEARER_TOKEN or not TWOCAPTCHA_API_KEY:
-        print("[-] ERROR: BEARER_TOKEN atau TWOCAPTCHA_API_KEY tidak ditemukan di file .env!")
+    if not REFRESH_TOKEN:
+        print("[-] ERROR: REFRESH_TOKEN tidak ditemukan di file .env!")
         return
 
     while True:
