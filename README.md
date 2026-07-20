@@ -86,7 +86,7 @@ Run the bot with:
 ```bash
 python bot.py
 or
-pytohon3 bot.py
+python3 bot.py
 ```
 
 The bot will:
