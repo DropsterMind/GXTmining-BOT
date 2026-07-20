@@ -26,8 +26,8 @@ An automated Python script to seamlessly claim mining rewards on GXT Exchange. T
 
 1. **Clone the repository:**
    ```bash
-   git clone [https://github.com/YOUR_USERNAME/gxt-auto-claim-bot.git](https://github.com/YOUR_USERNAME/gxt-auto-claim-bot.git)
-   cd gxt-auto-claim-bot
+   git clone [https://github.com/DropsterMind/GXTmining-BOT.git](https://github.com/DropsterMind/GXTmining-BOT.git)
+   cd GXTmining-BOT
    ```
    *(Make sure to change `YOUR_USERNAME` with your actual GitHub username)*
 
